@@ -11,8 +11,7 @@ class IncorrectChecksumError(Exception):pass
 class MyTCPHandler(SocketServer.StreamRequestHandler):
     def write(self, data):
         print 'Sending:', data
-        self.wfile.write(data
-                         )
+        self.wfile.write(data)
     def handle(self):
         # self.rfile is a file-like object created by the handler;
         # we can now use e.g. readline() instead of raw recv() calls

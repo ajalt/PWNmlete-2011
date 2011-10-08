@@ -1,12 +1,12 @@
 import socket
 
-host, port = 'helios.ececs.uc.edu', 8180
+# use ssh tunnel
+host, port = 'localhost', 8180
+server_addr, server_port = 'localhost', 9999
 password = '1a3e1f2bc98def7'
 ident = 'testing54325'
-server_port = 9999
-server_addr = 'localhost' #use ssh tunnel
-cookie = None
 cookiefile = 'cookie.txt'
+cookie = None
 
 #process message, returns response string if response is needed
 def ProcessMonitorMsg(line):
@@ -18,16 +18,16 @@ def ProcessMonitorMsg(line):
     if command == 'REQUIRE':
         if args == 'IDENT':
             return "IDENT %s\n" % ident
-        if args == 'PASSWORD':
+        elif args == 'PASSWORD':
             return "PASSWORD %s\n" % password
-        if args == 'HOST_PORT':
+        elif args == 'HOST_PORT':
             return "HOST_PORT %s %s\n" % (server_addr, server_port)
-        if args == 'ALIVE':
+        elif args == 'ALIVE':
             if cookie is None:
                 with open(cookiefile, 'r') as f:
                     cookie = f.read().strip()
-            return 'ALIVE %s' % cookie
-    if command == 'RESULT':
+            return "ALIVE %s\n" % cookie
+    elif command == 'RESULT':
         args = args.split()
         if args[0] == 'PASSWORD':
             cookie = args[1]
