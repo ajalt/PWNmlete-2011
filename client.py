@@ -1,11 +1,9 @@
 import socket
+import netsecurity
 
 # use ssh tunnel
 host, port = 'localhost', 8180
 server_addr, server_port = 'localhost', 9999
-password = '1a3e1f2bc98def7'
-ident = 'testing54325'
-cookiefile = 'cookie.txt'
 cookie = None
 
 #process message, returns response string if response is needed
@@ -17,21 +15,21 @@ def ProcessMonitorMsg(line):
     command, args = [i.strip() for i in msgparts]
     if command == 'REQUIRE':
         if args == 'IDENT':
-            return "IDENT %s\n" % ident
+            return "IDENT %s\n" % netsecurity.ident
         elif args == 'PASSWORD':
-            return "PASSWORD %s\n" % password
+            return "PASSWORD %s\n" % netsecurity.password
         elif args == 'HOST_PORT':
             return "HOST_PORT %s %s\n" % (server_addr, server_port)
         elif args == 'ALIVE':
             if cookie is None:
-                with open(cookiefile, 'r') as f:
+                with open(netsecurity.cookiefile, 'r') as f:
                     cookie = f.read().strip()
             return "ALIVE %s\n" % cookie
     elif command == 'RESULT':
         args = args.split()
         if args[0] == 'PASSWORD':
             cookie = args[1]
-            with open(cookiefile, 'w') as f:
+            with open(netsecurity.cookiefile, 'w') as f:
                 f.write(cookie)
                 # flush buffer and close file
                 f.close()
