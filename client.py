@@ -9,9 +9,9 @@ server_addr, server_port = 'localhost', 9999
 cookie = None
 
 #takes directive and returns command if response is needed
-def process_monitor_directive(directive):
+def process_monitor_directive(line):
     global cookie
-    directive, args = [i.strip() for i in directive.split(':', 1)]
+    directive, args = [i.strip() for i in line.split(':', 1)]
     if directive == 'REQUIRE':
         if args == 'IDENT':
             return 'IDENT %s\n' % netsecurity.ident
