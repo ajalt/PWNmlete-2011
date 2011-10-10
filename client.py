@@ -3,16 +3,16 @@ import contextlib
 
 import netsecurity
 
-# use ssh tunnel
+# use ssh tunnel. see wiki for instructions
 host, port = 'localhost', 8180
 server_addr, server_port = 'localhost', 9999
 cookie = None
 
-#process message, returns response string if response is needed
-def process_monitor_msg(line):
+#takes directive and returns command if response is needed
+def process_monitor_directive(directive):
     global cookie
-    command, args = [i.strip() for i in line.split(':', 1)]
-    if command == 'REQUIRE':
+    directive, args = [i.strip() for i in directive.split(':', 1)]
+    if directive == 'REQUIRE':
         if args == 'IDENT':
             return 'IDENT %s\n' % netsecurity.ident
         elif args == 'PASSWORD':
@@ -24,7 +24,7 @@ def process_monitor_msg(line):
                 with open(netsecurity.cookiefile, 'r') as f:
                     cookie = f.read().strip()
             return 'ALIVE %s\n' % cookie
-    elif command == 'RESULT':
+    elif directive == 'RESULT':
         args = args.split()
         if args[0] == 'PASSWORD':
             cookie = args[1]
@@ -35,7 +35,7 @@ def process_monitor_msg(line):
 with contextlib.closing(socket.create_connection((host, port))) as sock:
     for line in sock.makefile():
         print 'incoming>>>', line.strip()
-        response = process_monitor_msg(line)
+        response = process_monitor_directive(line)
         if response:
             print 'outgoing>>>' + response.strip()
             sock.send(response)
