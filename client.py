@@ -39,5 +39,3 @@ with contextlib.closing(socket.create_connection((host, port))) as sock:
         if response:
             print 'outgoing>>>' + response.strip()
             sock.send(response)
-
-#sock.close()
