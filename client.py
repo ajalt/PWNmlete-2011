@@ -7,8 +7,6 @@ import netsecurity
 host, port = 'localhost', 8180
 server_addr, server_port = 'localhost', 9999
 cookie = None
-incoming_prefix = "incoming>>>"
-outgoing_prefix = "outgoing>>>"
 
 #takes directive and returns command if response is needed
 def process_monitor_directive(line):
@@ -36,8 +34,8 @@ def process_monitor_directive(line):
 # Connect to server and open stream
 with contextlib.closing(socket.create_connection((host, port))) as sock:
     for line in sock.makefile():
-        print incoming_prefix, line.strip()
+        print 'incoming>>>', line.strip()
         response = process_monitor_directive(line)
         if response:
-            print outgoing_prefix, response.strip()
+            print 'outgoing>>>', response.strip()
             sock.send(response)
