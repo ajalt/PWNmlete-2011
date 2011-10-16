@@ -1,25 +1,24 @@
 import SocketServer
 import hashlib
 
-import netsecurity
+import constants
 
 # use ssh tunnel. see wiki for instructions
 host, port = 'localhost', 9999
 cookie = None
 
-# MyTCPHandler
-# overrides SocketServer.StreamRequestHandler with custom handle()
-# for processing incoming data over tcp
-#
-# self.rfile self.wfile are file-like objects created by the handler.
-# reading/writing from them gets/sends data over the TCP connection.
 class MyTCPHandler(SocketServer.StreamRequestHandler):
+    """Processes incoming data over tcp
+    
+    self.rfile self.wfile are file-like objects created by the handler.
+    reading/writing from them gets/sends data over the TCP connection.
+    """
     def send_command(self, command):
         self.wfile.write(command)
         print 'outgoing>>>', command.strip()
 
     def check_checksum(self, checksum):
-        check = hashlib.sha1(netsecurity.password.upper()).hexdigest()
+        check = hashlib.sha1(constants.password.upper()).hexdigest()
         if check != checksum:
             print '***Checksum does not match:'
             print '\tCalculated:\t', check
@@ -33,13 +32,13 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
                 self.check_checksum(args.strip())
             elif directive == 'REQUIRE':
                 if args == 'IDENT':
-                    self.send_command('IDENT %s\n' % netsecurity.ident)
+                    self.send_command('IDENT %s\n' % constants.ident)
                 elif args == 'QUIT':
                     self.send_command('QUIT\n')
                 elif args == 'ALIVE':
                     global cookie
                     if cookie is None:
-                        with open(netsecurity.cookiefile, 'r') as f:
+                        with open(constants.cookiefile, 'r') as f:
                             cookie = f.read().strip()
                     self.send_command('ALIVE %s\n' % cookie)
         
