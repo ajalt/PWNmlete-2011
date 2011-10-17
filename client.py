@@ -1,5 +1,7 @@
 import socket
+import sys
 import contextlib
+import base64
 
 import constants
 import diffie_hellman
@@ -9,6 +11,11 @@ import karn
 host, port = 'localhost', 8170
 server_addr, server_port = 'localhost', 9999
 cookie = None
+
+#http://stackoverflow.com/questions/2267362/convert-integer-to-a-string-in-a-given-numeric-base-in-python
+def baseN(num,b,numerals="0123456789abcdefghijklmnopqrstuvwxyz"):
+    return ((num == 0) and numerals[0]) or (baseN(num // b, b, numerals).lstrip(numerals[0]) + numerals[num % b])
+
 
 def process_monitor_directive(line):
     """takes directive and returns command if response is needed"""
@@ -24,7 +31,7 @@ def process_monitor_directive(line):
     directive, args = [i.strip() for i in line.split(':', 1)]
     if directive == 'REQUIRE':
         if args == 'IDENT':
-            return 'IDENT %s %s\n' % (constants.ident, diffie_hellman.public_key)
+            return 'IDENT %s %s\n' % (constants.ident, baseN(diffie_hellman.public_key, 32))
         elif args == 'PASSWORD':
             return 'PASSWORD %s\n' % constants.password
         elif args == 'HOST_PORT':

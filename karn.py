@@ -25,21 +25,35 @@ def decrypt(cipher_line):
     
     #convert from base 32 to bytes literal
     cipher_line = h(int(cipher_line.strip()[2:],32)).decode('hex')
-    
     key = h(diffie_hellman.shared_secret).decode('hex')
+
     output = ''
     for i in xrange(0, len(cipher_line), BLOCK_SIZE):
-        cipher = cipher_line[i:i+BLOCK_SIZE].ljust(BLOCK_SIZE, '0')
-        md = hashlib.sha1()
-        md.update(right(cipher))
-        md.update(right(key))
-        plaintext = h(int(md.hexdigest(), 16) ^ int(left(cipher).encode('hex'), 16)).decode('hex')
-
-        md = hashlib.sha1()
-        md.update(plaintext)
-        md.update(left(key))
-        plaintext += h(int(md.hexdigest(), 16) ^ int(right(cipher).encode('hex'), 16)).decode('hex')
+        cipher = cipher_line[i:i+BLOCK_SIZE]
+        leftmd = hashlib.sha1((right(cipher) + right(key)))
+        leftmdhex = leftmd.hexdigest()
+        leftcipherhex = left(cipher).encode('hex')
+        plaintext = ''
+        for j in range(0, len(leftmdhex), 2):
+            hexbyte = h(int(leftmdhex[j:j+2], 16) ^ int(leftcipherhex[j:j+2], 16))
+            #check for null byte
+            if hexbyte == '00':
+                break
+            plaintext += hexbyte.decode('hex')
         
+        if len(plaintext) < len(cipher):
+            output += plaintext
+            break
+
+        rightmd = hashlib.sha1(plaintext + left(key))
+        rightmdhex = rightmd.hexdigest()
+        rightcipherhex = right(cipher).encode('hex')
+        for j in range(0, len(rightmdhex), 2):
+            hexbyte = h(int(rightmdhex[j:j+2], 16) ^ int(rightcipherhex[j:j+2], 16))
+            #check for null byte
+            if hexbyte == '00':
+                break
+            plaintext += hexbyte.decode('hex')
+
         output += plaintext
     return output
-
