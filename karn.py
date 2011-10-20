@@ -30,30 +30,16 @@ def decrypt(cipher_line):
     output = ''
     for i in xrange(0, len(cipher_line), BLOCK_SIZE):
         cipher = cipher_line[i:i+BLOCK_SIZE]
-        leftmd = hashlib.sha1((right(cipher) + right(key)))
-        leftmdhex = leftmd.hexdigest()
+        leftmdhex = hashlib.sha1((right(cipher) + right(key))).hexdigest()
         leftcipherhex = left(cipher).encode('hex')
-        plaintext = ''
-        for j in range(0, len(leftmdhex), 2):
-            hexbyte = h(int(leftmdhex[j:j+2], 16) ^ int(leftcipherhex[j:j+2], 16))
-            #check for null byte
-            if hexbyte == '00':
-                break
-            plaintext += hexbyte.decode('hex')
-        
-        if len(plaintext) < len(cipher):
-            output += plaintext
-            break
-
-        rightmd = hashlib.sha1(plaintext + left(key))
-        rightmdhex = rightmd.hexdigest()
+        plaintext = h(int(leftmdhex, 16) ^ int(leftcipherhex, 16)).decode('hex')
+        rightmdhex = hashlib.sha1(plaintext + left(key)).hexdigest()
         rightcipherhex = right(cipher).encode('hex')
-        for j in range(0, len(rightmdhex), 2):
-            hexbyte = h(int(rightmdhex[j:j+2], 16) ^ int(rightcipherhex[j:j+2], 16))
-            #check for null byte
-            if hexbyte == '00':
-                break
-            plaintext += hexbyte.decode('hex')
+        plaintext += h(int(rightmdhex, 16) ^ int(rightcipherhex, 16)).decode('hex')
 
+        nullbyte = plaintext.find('\x00')
+        if nullbyte != -1:
+            plaintext = plaintext[:nullbyte]
         output += plaintext
+
     return output
