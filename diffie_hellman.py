@@ -5,7 +5,7 @@ import random
 #these declarations are just for code intelligence
 secret_key = None
 public_key = None
-server_key = None
+monitor_key = None
 shared_secret = None
 p = None
 g = None
@@ -22,7 +22,7 @@ class _DH(types.ModuleType, object):
         self._public_key = None
         self._shared_secret = None
     
-        self.server_key = None
+        self.monitor_key = None
     
     @property
     def secret_key(self):
@@ -40,10 +40,12 @@ class _DH(types.ModuleType, object):
     
     @property
     def shared_secret(self):
-        if self.server_key is None:
-            raise RuntimeError('server_key not set before calculating shared_secret')
-        if self._shared_secret is None:
-            self._shared_secret = pow(self.server_key, self.secret_key, self.p)
+        if self.monitor_key is None:
+            raise RuntimeError('monitor_key not set before calculating shared_secret')
+        # we can't cache the shared secret in the server's case,
+        # because the monitor will be generating new keys every time
+        # it connects to our server
+        self._shared_secret = pow(self.monitor_key, self.secret_key, self.p)
         return self._shared_secret
     
 #magic to get the properties to appear to be part of the module

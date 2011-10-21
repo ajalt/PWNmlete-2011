@@ -55,7 +55,7 @@ def process_monitor_directive(line):
             with open(constants.cookiefile, 'w') as f:
                 f.write(cookie)
         if args[0] == 'IDENT' and Settings.encrypt:
-            diffie_hellman.server_key = int(args[1], 32)
+            diffie_hellman.monitor_key = int(args[1], 32)
 
 
 if __name__ == '__main__':
