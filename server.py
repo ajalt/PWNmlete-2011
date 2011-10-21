@@ -43,7 +43,7 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
         for line in self.rfile:
             print 'incoming>>>', line.strip()
             directive, args = [i.strip() for i in line.split(':', 1)]
-            if mode == 'manual':
+            if Settings.mode == 'manual':
                 if directive == 'WAITING':
                     self.send_command(raw_input('Enter server command: ') + '\n')
             elif directive == 'PARTICIPANT_PASSWORD_CHECKSUM':
@@ -59,15 +59,11 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
                         with open(constants.cookiefile, 'r') as f:
                             cookie = f.read().strip()
                     self.send_command('ALIVE %s\n' % cookie)
-        
-class MyTCPServer(SocketServer.ThreadingTCPServer):
-    def handle_error(self, request, client_address):
-        print "socket error: %s:%s" % client_address
 
 if __name__ == '__main__':
     parse_arguments()
     print 'Server listening on port %s.' % Settings.port
     print 'Server is in ' + Settings.mode + ' mode'
 
-    server = MyTCPServer((Settings.host, Settings.port), MyTCPHandler)
+    server = SocketServer.ThreadingTCPServer((Settings.host, Settings.port), MyTCPHandler)
     server.serve_forever()

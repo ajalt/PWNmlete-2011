@@ -6,6 +6,10 @@ BLOCK_SIZE = 40
 
 class KarnError(Exception): pass
 
+#http://stackoverflow.com/questions/2267362/convert-integer-to-a-string-in-a-given-numeric-base-in-python
+def baseN(num,b,numerals="0123456789abcdefghijklmnopqrstuvwxyz"):
+    return ((num == 0) and numerals[0]) or (baseN(num // b, b, numerals).lstrip(numerals[0]) + numerals[num % b])
+
 def left(string):
     return string[:len(string)//2]
     
@@ -20,15 +24,15 @@ def h(x):
     return ('0' if len(x) % 2 else '') + x
 
 def decrypt(cipher_line):
-    if not cipher_line.startswith('1a'):
-        raise KarnError('Guard byte not present in line: %s' % cipher_line)
+    if not is_encrypted(cipher_line):
+        raise KarnError('"%s" is not encrypted!' % cipher_line)
     
     #convert from base 32 to bytes literal
     cipher_line = h(int(cipher_line.strip()[2:],32)).decode('hex')
     key = h(diffie_hellman.shared_secret).decode('hex')
 
     output = ''
-    for i in xrange(0, len(cipher_line), BLOCK_SIZE):
+    for i in xrange(0, len(cipher_line) - 1, BLOCK_SIZE):
         cipher = cipher_line[i:i+BLOCK_SIZE]
         leftmdhex = hashlib.sha1((right(cipher) + right(key))).hexdigest()
         leftcipherhex = left(cipher).encode('hex')
@@ -41,5 +45,27 @@ def decrypt(cipher_line):
         if nullbyte != -1:
             plaintext = plaintext[:nullbyte]
         output += plaintext
+
+    return output
+
+def is_encrypted(line):
+    return line.startswith('1a')
+
+def encrypt(line):
+    key = h(diffie_hellman.shared_secret).decode('hex')
+
+    output = ''
+    for i in xrange(0, len(line), BLOCK_SIZE):
+        chunk = line[i:i+BLOCK_SIZE]
+        while len(chunk) % BLOCK_SIZE:
+            chunk += '\x00'
+
+        leftmdhex = hashlib.sha1(left(chunk) + left(key)).hexdigest()
+        cipherright = h(int(leftmdhex, 16) ^ int(right(chunk).encode('hex'), 16)).decode('hex')
+        rightmdhex = hashlib.sha1(cipherright + right(key)).hexdigest()
+        cipherleft = h(int(rightmdhex, 16) ^ int(left(chunk).encode('hex'), 16)).decode('hex')
+        output += baseN(int((cipherleft + cipherright).encode('hex'), 16), 32)
+
+    output = '1a' + output + '\n'
 
     return output
