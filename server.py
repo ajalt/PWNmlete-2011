@@ -2,9 +2,10 @@ import SocketServer
 import hashlib
 import sys
 import argparse
+import random
 
 import constants
-import diffie_hellman
+from diffie_hellman import Session
 import karn
 import util
 
@@ -15,6 +16,7 @@ class Settings:
     port = 9999
     mode = 'normal'
     encrypt = True
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='0\/3r34sY NetSecurity Server')
@@ -37,25 +39,39 @@ def check_checksum(checksum):
         print '\tReceived:\t', checksum
 
 class MyTCPHandler(SocketServer.StreamRequestHandler):
-    """Processes incoming data over tcp"""
+    """Handler class for our socket server
+    
+    It is instantiated once for every request to connect 
+    to the server
+    """
     
     def send_command(self, command):
         #wfile is a file-like handle to our socket
         self.wfile.write(command)
         print 'outgoing',
         outgoingtext = command.strip()
-        if util.is_encrypted(command):
+        if util.is_encrypted(command) and self.session is not None:
             print '[encrypted]',
-            outgoingtext = karn.decrypt(command).strip()
+            try:
+                outgoingtext = karn.decrypt(command, self.session.shared_secret).strip()
+            except karn.DecryptionError as de:
+                util.print_decryption_debug_info(de)
         print '>>>', outgoingtext
 
     def handle(self):
+        self.session = Session()
         #rfile is a file-like handle to our socket
         for line in self.rfile:
             print 'incoming',
             if util.is_encrypted(line):
-                line = karn.decrypt(line)
+                try:
+                    line = karn.decrypt(line, self.session.shared_secret)
+                except karn.DecryptionError as de:
+                    util.print_decryption_debug_info(de)
+                    continue
+
                 print '[encrypted]',
+
             print '>>>', line.strip()
             directive, args = [i.strip() for i in line.split(':', 1)]
             if Settings.mode == 'manual':
@@ -66,23 +82,26 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
             elif directive == 'REQUIRE':
                 if args == 'IDENT':
                     if Settings.encrypt:
-                        self.send_command('IDENT %s %s\n' % (constants.ident, util.baseN(diffie_hellman.public_key, 32)))
+                        self.send_command('IDENT %s %s\n' % (constants.ident, util.baseN(self.session.public_key, 32)))
                     else:
                         self.send_command('IDENT %s\n' % constants.ident)
                 elif args == 'QUIT':
                     command = 'QUIT\n'
-                    self.send_command(karn.encrypt(command) if Settings.encrypt else command)
+                    self.send_command(karn.encrypt(command, self.session.shared_secret) if Settings.encrypt else command)
                 elif args == 'ALIVE':
                     global cookie
                     if cookie is None:
                         with open(constants.cookiefile, 'r') as f:
                             cookie = f.read().strip()
                     if Settings.encrypt:
-                        self.send_command(karn.encrypt('ALIVE %s\n' % cookie))
+                        self.send_command(karn.encrypt('ALIVE %s\n' % cookie, self.session.shared_secret))
             elif directive == 'RESULT':
                 args = args.split()
                 if args[0] == 'IDENT' and Settings.encrypt:
-                    diffie_hellman.monitor_key = int(args[1], 32)
+                    self.session.set_monitor_key(int(args[1], 32))
+                    f = open('secretkeys.txt', 'a')
+                    f.write('%x\n' % self.session.shared_secret)
+                    f.close()
 
 if __name__ == '__main__':
     parse_arguments()

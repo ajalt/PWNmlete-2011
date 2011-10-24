@@ -7,6 +7,13 @@ BLOCK_SIZE = 40
 
 class KarnError(Exception): pass
 
+class DecryptionError(KarnError):
+    """Exception raised when decryption results in an unreadable string"""
+    def __init__(self, ciphertext, key, decrypted):
+        self.ciphertext = ciphertext
+        self.key = key
+        self.decrypted = decrypted
+
 def left(string):
     return string[:len(string)//2]
     
@@ -20,21 +27,21 @@ def h(x):
     x = '%x' % x
     return ('0' if len(x) % 2 else '') + x
 
-def decrypt(cipher_line):
+def decrypt(cipher_line, key):
     if not util.is_encrypted(cipher_line):
         raise KarnError('"%s" is not encrypted!' % cipher_line)
     
     #convert from base 32 to bytes literal
-    cipher_line = h(int(cipher_line.strip()[2:],32)).decode('hex')
-    key = h(diffie_hellman.shared_secret).decode('hex')
+    cipherbytes = h(int(cipher_line.strip()[2:],32)).decode('hex')
+    keybytes = h(key).decode('hex')
 
     output = ''
-    for i in xrange(0, len(cipher_line) - 1, BLOCK_SIZE):
-        cipher = cipher_line[i:i+BLOCK_SIZE]
-        leftmdhex = hashlib.sha1((right(cipher) + right(key))).hexdigest()
+    for i in xrange(0, len(cipherbytes) - 1, BLOCK_SIZE):
+        cipher = cipherbytes[i:i+BLOCK_SIZE]
+        leftmdhex = hashlib.sha1((right(cipher) + right(keybytes))).hexdigest()
         leftcipherhex = left(cipher).encode('hex')
         plaintext = h(int(leftmdhex, 16) ^ int(leftcipherhex, 16)).decode('hex')
-        rightmdhex = hashlib.sha1(plaintext + left(key)).hexdigest()
+        rightmdhex = hashlib.sha1(plaintext + left(keybytes)).hexdigest()
         rightcipherhex = right(cipher).encode('hex')
         plaintext += h(int(rightmdhex, 16) ^ int(rightcipherhex, 16)).decode('hex')
 
@@ -43,10 +50,14 @@ def decrypt(cipher_line):
             plaintext = plaintext[:nullbyte]
         output += plaintext
 
+    for i in range(0, len(output) - 1):
+        if int(output[i].encode('hex'), 16) > 127:
+            raise DecryptionError(cipher_line, key, output)
+
     return output
 
-def encrypt(line):
-    key = h(diffie_hellman.shared_secret).decode('hex')
+def encrypt(line, key):
+    key = h(key).decode('hex')
 
     output = ''
     for i in xrange(0, len(line), BLOCK_SIZE):
