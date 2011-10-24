@@ -16,6 +16,7 @@ class Settings:
     port = 9999
     mode = 'normal'
     encrypt = True
+    debug = False
 
 
 def parse_arguments():
@@ -23,6 +24,7 @@ def parse_arguments():
     parser.add_argument('--port', help='port to listen on', type=int, default=Settings.port)
     parser.add_argument('--manual', help='run server in manual mode', action='store_true')
     parser.add_argument('--plaintext', help='do not encrypt lines before sending', action='store_true')
+    parser.add_argument('--debug', help='print debug information', action='store_true')
     args = parser.parse_args()
     if args.port:
         Settings.port = args.port
@@ -30,6 +32,8 @@ def parse_arguments():
         Settings.mode = 'manual'
     if args.plaintext:
         Settings.encrypt = False
+    if args.debug:
+        Settings.debug = True
 
 def check_checksum(checksum):
     check = hashlib.sha1(constants.password.upper()).hexdigest()
@@ -55,24 +59,28 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
             try:
                 outgoingtext = karn.decrypt(command, self.session.shared_secret).strip()
             except karn.DecryptionError as de:
-                util.print_decryption_debug_info(de)
+                if Settings.debug:
+                    util.print_decryption_debug_info(de)
         print '>>>', outgoingtext
 
     def handle(self):
         self.session = Session()
         #rfile is a file-like handle to our socket
         for line in self.rfile:
-            print 'incoming',
             if util.is_encrypted(line):
                 try:
                     line = karn.decrypt(line, self.session.shared_secret)
                 except karn.DecryptionError as de:
-                    util.print_decryption_debug_info(de)
+                    if Settings.debug:
+                        util.print_decryption_debug_info(de)
                     continue
 
-                print '[encrypted]',
+                print 'incoming [encrypted] >>>', line.strip()
+                if Settings.debug:
+                    print 'decrypted using key: %x' % self.session.shared_secret
 
-            print '>>>', line.strip()
+            else:
+                print 'incoming >>>', line.strip()
             directive, args = [i.strip() for i in line.split(':', 1)]
             if Settings.mode == 'manual':
                 if directive == 'WAITING':
