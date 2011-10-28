@@ -5,12 +5,12 @@ import argparse
 import sys
 
 import constants
-from diffie_hellman import Session
+import diffie_hellman
 import karn
 import util
 
 cookie = None
-mysession = None
+mysession = diffie_hellman.Session()
 
 class Settings:
     monitor = 'localhost'
@@ -33,7 +33,6 @@ def parse_arguments():
 def process_monitor_directive(line):
     """takes directive and returns command if response is needed"""
     global cookie
-    global mysession
         
     directive, args = [i.strip() for i in line.split(':', 1)]
     if directive == 'REQUIRE':
@@ -65,8 +64,6 @@ if __name__ == '__main__':
     parse_arguments()
     print 'Starting 0\/3r34sY NetSecurity Client'
     print 'Commands will ' + ('' if Settings.encrypt else 'not ') + 'be encrypted'
-
-    mysession = Session()
 
     # Connect to server and open stream
     with contextlib.closing(socket.create_connection((Settings.monitor, Settings.monitor_port))) as sock:

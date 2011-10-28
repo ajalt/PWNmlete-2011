@@ -5,7 +5,7 @@ import argparse
 import random
 
 import constants
-from diffie_hellman import Session
+import diffie_hellman
 import karn
 import util
 
@@ -48,6 +48,14 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
     It is instantiated once for every request to connect 
     to the server
     """
+    def __init__(self, request, client_address, server):
+        self.session = None
+        #super() doesn't work here, for no apparant reason
+        #super(MyTCPHandler, self).__init__(request, client_address, server)
+        
+        SocketServer.StreamRequestHandler.__init__(self, request, client_address, server)
+        
+        
     
     def send_command(self, command):
         #wfile is a file-like handle to our socket
@@ -64,7 +72,8 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
         print '>>>', outgoingtext
 
     def handle(self):
-        self.session = Session()
+        if self.session is None:
+            self.session = diffie_hellman.Session()
         #rfile is a file-like handle to our socket
         for line in self.rfile:
             if util.is_encrypted(line):
