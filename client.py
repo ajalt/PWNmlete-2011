@@ -11,6 +11,7 @@ import util
 
 cookie = None
 mysession = diffie_hellman.Session()
+mycipher = None
 
 class Settings:
     monitor = 'localhost'
@@ -33,6 +34,7 @@ def parse_arguments():
 def process_monitor_directive(line):
     """takes directive and returns command if response is needed"""
     global cookie
+    global mycipher
         
     directive, args = [i.strip() for i in line.split(':', 1)]
     if directive == 'REQUIRE':
@@ -40,16 +42,16 @@ def process_monitor_directive(line):
             return 'IDENT %s %s\n' % (constants.ident, util.baseN(mysession.public_key, 32))
         elif args == 'PASSWORD':
             command = 'PASSWORD %s\n' % constants.password
-            return karn.encrypt(command, mysession.shared_secret) if Settings.encrypt else command
+            return mycipher.encrypt(command) if mycipher else command
         elif args == 'HOST_PORT':
             command = 'HOST_PORT %s %s\n' % (Settings.server, Settings.server_port)
-            return karn.encrypt(command, mysession.shared_secret) if Settings.encrypt else command
+            return mycipher.encrypt(command) if mycipher else command
         elif args == 'ALIVE':
             if cookie is None:
                 with open(constants.cookiefile, 'r') as f:
                     cookie = f.read().strip()
             command = 'ALIVE %s\n' % cookie
-            return karn.encrypt(command, mysession.shared_secret) if Settings.encrypt else command
+            return mycipher.encrypt(command) if mycipher else command
     elif directive == 'RESULT':
         args = args.split()
         if args[0] == 'PASSWORD':
@@ -58,6 +60,7 @@ def process_monitor_directive(line):
                 f.write(cookie)
         if args[0] == 'IDENT' and Settings.encrypt:
             mysession.set_monitor_key(int(args[1], 32))
+            mycipher = karn.Cipher(mysession.shared_secret)
 
 
 if __name__ == '__main__':
@@ -69,10 +72,9 @@ if __name__ == '__main__':
     with contextlib.closing(socket.create_connection((Settings.monitor, Settings.monitor_port))) as sock:
         for line in sock.makefile():
             print 'incoming',
-            backup = line
             if util.is_encrypted(line):
                 try:
-                    line = karn.decrypt(line, mysession.shared_secret)
+                    line = mycipher.decrypt(line)
                 except karn.DecryptionError as de:
                     util.print_decryption_debug_info(de)
                     continue
@@ -86,7 +88,7 @@ if __name__ == '__main__':
                 if util.is_encrypted(response):
                     print '[encrypted]',
                     try:
-                        outgoingtext = karn.decrypt(response, mysession.shared_secret).strip()
+                        outgoingtext = mycipher.decrypt(response).strip()
                     except karn.DecryptionError as de:
                         util.print_decryption_debug_info(de)
 

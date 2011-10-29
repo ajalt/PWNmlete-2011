@@ -50,6 +50,7 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
     """
     def __init__(self, request, client_address, server):
         self.session = None
+        self.cipher = None
         #super() doesn't work here, for no apparant reason
         #super(MyTCPHandler, self).__init__(request, client_address, server)
         
@@ -65,7 +66,7 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
         if util.is_encrypted(command) and self.session is not None:
             print '[encrypted]',
             try:
-                outgoingtext = karn.decrypt(command, self.session.shared_secret).strip()
+                outgoingtext = self.cipher.decrypt(command).strip()
             except karn.DecryptionError as de:
                 if Settings.debug:
                     util.print_decryption_debug_info(de)
@@ -78,7 +79,7 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
         for line in self.rfile:
             if util.is_encrypted(line):
                 try:
-                    line = karn.decrypt(line, self.session.shared_secret)
+                    line = self.cipher.decrypt(line)
                 except karn.DecryptionError as de:
                     if Settings.debug:
                         util.print_decryption_debug_info(de)
@@ -104,21 +105,19 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
                         self.send_command('IDENT %s\n' % constants.ident)
                 elif args == 'QUIT':
                     command = 'QUIT\n'
-                    self.send_command(karn.encrypt(command, self.session.shared_secret) if Settings.encrypt else command)
+                    self.send_command(self.cipher.encrypt(command) if self.cipher else command)
                 elif args == 'ALIVE':
                     global cookie
                     if cookie is None:
                         with open(constants.cookiefile, 'r') as f:
                             cookie = f.read().strip()
-                    if Settings.encrypt:
-                        self.send_command(karn.encrypt('ALIVE %s\n' % cookie, self.session.shared_secret))
+                    command = 'ALIVE %s\n' % cookie
+                    self.send_command(self.cipher.encrypt(command) if self.cipher else command)
             elif directive == 'RESULT':
                 args = args.split()
                 if args[0] == 'IDENT' and Settings.encrypt:
                     self.session.set_monitor_key(int(args[1], 32))
-                    f = open('secretkeys.txt', 'a')
-                    f.write('%x\n' % self.session.shared_secret)
-                    f.close()
+                    self.cipher = karn.Cipher(self.session.shared_secret)
 
 if __name__ == '__main__':
     parse_arguments()

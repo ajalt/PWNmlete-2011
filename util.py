@@ -1,4 +1,5 @@
 import karn
+import random
 
 #http://stackoverflow.com/questions/2267362/convert-integer-to-a-string-in-a-given-numeric-base-in-python
 def baseN(num, b, numerals='0123456789abcdefghijklmnopqrstuvwxyz'):
@@ -14,3 +15,18 @@ def print_decryption_debug_info(e):
     print 'original cipher text: ' + repr(e.ciphertext.strip())
     print 'using key: %r' % e.key
 
+def bytestohex(bindata):
+    return ''.join('%02x' % byte for byte in bindata)
+
+def left(string):
+    return string[:len(string)//2]
+    
+def right(string):
+    return string[len(string)//2:]
+    
+def inttohex(x):
+    """Calculate the hex value of an int without prepending '0x' or appending 'L'
+    
+    Always returns an even number of characters."""
+    x = '%x' % x
+    return ('0' if len(x) % 2 else '') + x
