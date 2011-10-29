@@ -24,7 +24,7 @@ class Cipher:
 
         # the monitor uses Java's BigInteger, which uses 2s complement.
         # that means that it will add on a 0 byte in front to preserve the
-        # sign of the key, if the most significant byte of the key is set
+        # sign of the key, if the most significant bit of the key is set
         if keybytes[0] & (1 << 7):
             keybytes.insert(0,0)
 
