@@ -3,13 +3,13 @@ import hashlib
 import sys
 import argparse
 import random
+import sqlite3
 
-import constants
 import diffie_hellman
 import karn
 import util
 
-cookie = None
+dbconn = None
 
 class Settings:
     host = 'localhost'
@@ -17,6 +17,8 @@ class Settings:
     mode = 'normal'
     encrypt = True
     debug = False
+    identsdbfile = 'idents.db'
+    ident = 'testing54329'
 
 
 def parse_arguments():
@@ -35,12 +37,6 @@ def parse_arguments():
     if args.debug:
         Settings.debug = True
 
-def check_checksum(checksum):
-    check = hashlib.sha1(constants.password.upper()).hexdigest()
-    if check != checksum:
-        print '***Checksum does not match:'
-        print '\tCalculated:\t', check
-        print '\tReceived:\t', checksum
 
 class MyTCPHandler(SocketServer.StreamRequestHandler):
     """Handler class for our socket server
@@ -48,16 +44,31 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
     It is instantiated once for every request to connect 
     to the server
     """
-    def __init__(self, request, client_address, server):
+        
+    # called once before handle() to perform initialization
+    def setup(self):
         self.session = None
         self.cipher = None
-        #super() doesn't work here, for no apparant reason
-        #super(MyTCPHandler, self).__init__(request, client_address, server)
-        
-        SocketServer.StreamRequestHandler.__init__(self, request, client_address, server)
-        
-        
+
+        # connect to sqlite3 db
+        self.dbconn = sqlite3.connect(Settings.identsdbfile)
+        self.dbconn.text_factory = str
+
+        SocketServer.StreamRequestHandler.setup(self)
+       
+    # called once after handle() to perform cleanup
+    def finish(self):
+        SocketServer.StreamRequestHandler.finish(self)
+        self.dbconn.close()
     
+    def check_checksum(self,checksum):
+        password = util.getpassword(self.dbconn, Settings.ident)
+        check = hashlib.sha1(password.upper()).hexdigest()
+        if check != checksum:
+            print '***Checksum does not match:'
+            print '\tCalculated:\t', check
+            print '\tReceived:\t', checksum
+
     def send_command(self, command):
         #wfile is a file-like handle to our socket
         self.wfile.write(command)
@@ -96,22 +107,20 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
                 if directive == 'WAITING':
                     self.send_command(raw_input('Enter server command: ') + '\n')
             elif directive == 'PARTICIPANT_PASSWORD_CHECKSUM':
-                check_checksum(args.strip())
+                # TODO: stop hardcoding server ident; match checksum to an ident in the database
+                self.check_checksum(args.strip())
             elif directive == 'REQUIRE':
                 if args == 'IDENT':
                     if Settings.encrypt:
-                        self.send_command('IDENT %s %s\n' % (constants.ident, util.baseN(self.session.public_key, 32)))
+                        self.send_command('IDENT %s %s\n' % (Settings.ident, util.baseN(self.session.public_key, 32)))
                     else:
-                        self.send_command('IDENT %s\n' % constants.ident)
+                        self.send_command('IDENT %s\n' % Settings.ident)
                 elif args == 'QUIT':
                     command = 'QUIT\n'
                     self.send_command(self.cipher.encrypt(command) if self.cipher else command)
                 elif args == 'ALIVE':
                     global cookie
-                    if cookie is None:
-                        with open(constants.cookiefile, 'r') as f:
-                            cookie = f.read().strip()
-                    command = 'ALIVE %s\n' % cookie
+                    command = 'ALIVE %s\n' % util.getcookie(self.dbconn, Settings.ident)
                     self.send_command(self.cipher.encrypt(command) if self.cipher else command)
             elif directive == 'RESULT':
                 args = args.split()

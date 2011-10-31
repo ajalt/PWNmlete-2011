@@ -1,5 +1,6 @@
 import karn
 import random
+import sqlite3
 
 #http://stackoverflow.com/questions/2267362/convert-integer-to-a-string-in-a-given-numeric-base-in-python
 def baseN(num, b, numerals='0123456789abcdefghijklmnopqrstuvwxyz'):
@@ -30,3 +31,24 @@ def inttohex(x):
     Always returns an even number of characters."""
     x = '%x' % x
     return ('0' if len(x) % 2 else '') + x
+
+def getrow(conn, ident):
+    cursor = conn.cursor()
+    cursor.execute('select * from players where ident=?',(ident,))
+    return cursor.fetchone()
+
+def updatepassword(conn, ident, password):
+    cursor = conn.cursor()
+    cursor.execute('update players set password=? where ident=?', (password,ident))
+    conn.commit()
+
+def updatecookie(conn, ident, cookie):
+    cursor = conn.cursor()
+    cursor.execute('update players set cookie=? where ident=?', (cookie,ident))
+    conn.commit()
+
+def getpassword(conn, ident):
+    return getrow(conn,ident)[1]
+
+def getcookie(conn, ident):
+    return getrow(conn, ident)[2]
