@@ -59,7 +59,7 @@ class Cipher:
         if any(i > 127 for i in output):
             raise DecryptionError(cipher_line, self.key, output)
 
-        return output
+        return str(output)
 
 
     def encrypt(self, msg):
