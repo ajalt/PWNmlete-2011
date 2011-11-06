@@ -1,5 +1,3 @@
-import karn
-import random
 import sqlite3
 
 #http://stackoverflow.com/questions/2267362/convert-integer-to-a-string-in-a-given-numeric-base-in-python
@@ -48,7 +46,8 @@ def updatecookie(conn, ident, cookie):
     conn.commit()
 
 def getpassword(conn, ident):
-    return getrow(conn,ident)[1]
+    print conn, ident
+    return getrow(conn, ident)[1]
 
 def getcookie(conn, ident):
     return getrow(conn, ident)[2]

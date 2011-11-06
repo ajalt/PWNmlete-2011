@@ -14,8 +14,8 @@ dbconn = None
 
 class Settings:
     host = 'localhost'
-    port = 9992
-    ident = 'testing3'
+    port = 9991
+    ident = 'testing1'
     mode = 'normal'
     encrypt = True
     debug = False
@@ -140,6 +140,7 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
                     #use a whitelist instead of spending time on calculations
                     accept_transfer = self.transfer_request['recipient'] in Settings.ident_whitelist
                     #accept_transfer = self.verifier.is_valid()
+                    print self.verifier.is_valid()
                     command = 'TRANSFER_RESPONSE %s' % ('ACCEPT' if accept_transfer else 'DECLINE')
                     self.send_command(self.cipher.encrypt(command) if self.cipher else command)
             elif directive == 'TRANSFER':

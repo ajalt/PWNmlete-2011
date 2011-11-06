@@ -22,8 +22,8 @@ class Settings:
     monitor = 'localhost'
     monitor_port = 8160
     server = 'localhost'
-    server_port = 9992
-    ident = 'testing3'
+    server_port = 9991
+    ident = 'testing1'
     encrypt = True
     mode = 'normal'
     identsdbfile = 'idents.db'
@@ -38,15 +38,15 @@ def process_monitor_directive(line):
     global cookie
     global mycipher
     global authcomplete
-        
+    global transfer_args
+    
     directive, args = [i.strip() for i in line.split(':', 1)]
     if directive == 'WAITING' and authcomplete and Settings.mode == 'manual':
-	    global transfer_args
         if transfer_args:
             command = encrypt('TRANSFER_REQUEST %s %s FROM %s\n' % transfer_args)
             transfer_args = ()
             return command
-		else:
+        else:
             command = raw_input('Enter command: ') + '\n'
             return mycipher.encrypt(command) if mycipher else command
     elif directive == 'REQUIRE':
@@ -86,7 +86,6 @@ def process_monitor_directive(line):
             elif args[0] == 'SUBSET_A':
                 prover.subset_a = tuple(int(i) for i in args[1:])
     elif directive == 'WAITING' and authcomplete:
-        global transfer_args
         if transfer_args:
             command = encrypt('TRANSFER_REQUEST %s %s FROM %s\n' % transfer_args)
             transfer_args = ()
