@@ -20,7 +20,7 @@ class Settings:
     encrypt = True
     debug = False
     identsdbfile = 'idents.db'
-    ident_whitelist = ('TESTING1', 'TSTING2', 'TESTING3')
+    ident_whitelist = ('TESTING1', 'TESTING2', 'TESTING3')
     proof_rounds = 3
 
 
@@ -30,15 +30,18 @@ def parse_arguments():
     parser.add_argument('--manual', help='run server in manual mode', action='store_true')
     parser.add_argument('--plaintext', help='do not encrypt lines before sending', action='store_true')
     parser.add_argument('--debug', help='print debug information', action='store_true')
+    parser.add_argument('--ident', help='ident to use', default=Settings.ident)
+    parser.add_argument('--identsdb', help='sqlite3 database for ident lookup', default=Settings.identsdbfile)
     args = parser.parse_args()
-    if args.port:
-        Settings.port = args.port
     if args.manual:
         Settings.mode = 'manual'
     if args.plaintext:
         Settings.encrypt = False
     if args.debug:
         Settings.debug = True
+    Settings.port = args.port
+    Settings.ident = args.ident.upper()
+    Settings.identsdbfile = args.identsdb
 
 
 class MyTCPHandler(SocketServer.StreamRequestHandler):

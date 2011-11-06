@@ -2,7 +2,6 @@ import socket
 import sys
 import contextlib
 import argparse
-import sys
 import sqlite3
 
 import diffie_hellman
@@ -41,10 +40,21 @@ def process_monitor_directive(line):
     global authcomplete
         
     directive, args = [i.strip() for i in line.split(':', 1)]
-    
-    if directive == 'REQUIRE':
+    if directive == 'WAITING' and authcomplete and Settings.mode == 'manual':
+	    global transfer_args
+        if transfer_args:
+            command = encrypt('TRANSFER_REQUEST %s %s FROM %s\n' % transfer_args)
+            transfer_args = ()
+            return command
+		else:
+            command = raw_input('Enter command: ') + '\n'
+            return mycipher.encrypt(command) if mycipher else command
+    elif directive == 'REQUIRE':
         if args == 'IDENT':
-            return 'IDENT %s %s\n' % (Settings.ident, util.baseN(mysession.public_key, 32))
+            if Settings.encrypt:
+                return 'IDENT %s %s\n' % (Settings.ident, util.baseN(mysession.public_key, 32))
+            else:
+                return 'IDENT %s\n' % Settings.ident
         elif args == 'PASSWORD':
             return encrypt('PASSWORD %s\n' % util.getpassword(dbconn, Settings.ident))
         elif args == 'HOST_PORT':
