@@ -17,7 +17,7 @@ class DecryptionError(KarnError):
         self.key = key
         self.decrypted = decrypted
 
-class Cipher:
+class Cipher(object):
     def __init__(self, key):
         self.key = key
         keybytes = bytearray.fromhex(util.inttohex(key))

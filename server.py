@@ -6,6 +6,7 @@ import random
 import sqlite3
 
 import diffie_hellman
+import fiat_shamir
 import karn
 import util
 
@@ -13,12 +14,14 @@ dbconn = None
 
 class Settings:
     host = 'localhost'
-    port = 9999
+    port = 9992
+    ident = 'testing3'
     mode = 'normal'
     encrypt = True
     debug = False
     identsdbfile = 'idents.db'
-    ident = 'testing54329'
+    ident_whitelist = ('TESTING1', 'TSTING2', 'TESTING3')
+    proof_rounds = 3
 
 
 def parse_arguments():
@@ -49,6 +52,8 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
     def setup(self):
         self.session = None
         self.cipher = None
+        self.transfer_request = {}
+        self.verifier = fiat_shamir.Verifier(Settings.proof_rounds)
 
         # connect to sqlite3 db
         self.dbconn = sqlite3.connect(Settings.identsdbfile)
@@ -122,11 +127,34 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
                     global cookie
                     command = 'ALIVE %s\n' % util.getcookie(self.dbconn, Settings.ident)
                     self.send_command(self.cipher.encrypt(command) if self.cipher else command)
+                elif args == 'ROUNDS':
+                    command = 'ROUNDS %d' % Settings.proof_rounds
+                    self.send_command(self.cipher.encrypt(command) if self.cipher else command)
+                elif args == 'SUBSET_A':
+                    command = 'SUBSET_A %s' % ' '.join(str(s) for s in self.verifier.subset_a)
+                    self.send_command(self.cipher.encrypt(command) if self.cipher else command)
+                elif args == 'TRANSFER_RESPONSE':
+                    #use a whitelist instead of spending time on calculations
+                    accept_transfer = self.transfer_request['recipient'] in Settings.ident_whitelist
+                    #accept_transfer = self.verifier.is_valid()
+                    command = 'TRANSFER_RESPONSE %s' % ('ACCEPT' if accept_transfer else 'DECLINE')
+                    self.send_command(self.cipher.encrypt(command) if self.cipher else command)
+            elif directive == 'TRANSFER':
+                recipient, amount, _, sender = args.split()
+                self.transfer_request = {'recipient':recipient, 'amount':amount, 'sender':sender}
             elif directive == 'RESULT':
                 args = args.split()
                 if args[0] == 'IDENT' and Settings.encrypt:
                     self.session.set_monitor_key(int(args[1], 32))
                     self.cipher = karn.Cipher(self.session.shared_secret)
+                elif args[0] == 'SUBSET_K':
+                    self.verifier.subset_k = tuple(int(i) for i in args[1:])
+                elif args[0] == 'SUBSET_J':
+                    self.verifier.subset_j = tuple(int(i) for i in args[1:])
+                elif args[0] == 'PUBLIC_KEY':
+                    self.verifier.v, self.verifier.n = (int(i) for i in args[1:])
+                elif args[0] == 'AUTHORIZE_SET':
+                    self.verifier.authorize_set = tuple(int(i) for i in args[1:])
 
 if __name__ == '__main__':
     parse_arguments()
