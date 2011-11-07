@@ -1,5 +1,4 @@
 import socket
-import sys
 import contextlib
 import argparse
 import sqlite3
@@ -73,18 +72,18 @@ def process_monitor_directive(line):
     elif directive == 'RESULT':
         if args == 'ALIVE Identity has been verified.':
             authcomplete = True
-        else:
-            args = args.split()
-            if args[0] == 'PASSWORD' or args[0] == 'CHANGE_PASSWORD':
-                cookie = args[1]
-                util.updatecookie(dbconn, Settings.ident, cookie)
-            elif args[0] == 'IDENT' and Settings.encrypt:
-                mysession.set_monitor_key(int(args[1], 32))
-                mycipher = karn.Cipher(mysession.shared_secret)
-            elif args[0] == 'ROUNDS':
-                prover.rounds = int(args[1])
-            elif args[0] == 'SUBSET_A':
-                prover.subset_a = tuple(int(i) for i in args[1:])
+            return
+        args = args.split()
+        if args[0] == 'PASSWORD' or args[0] == 'CHANGE_PASSWORD':
+            cookie = args[1]
+            util.updatecookie(dbconn, Settings.ident, cookie)
+        elif args[0] == 'IDENT' and Settings.encrypt:
+            mysession.set_monitor_key(int(args[1], 32))
+            mycipher = karn.Cipher(mysession.shared_secret)
+        elif args[0] == 'ROUNDS':
+            prover.rounds = int(args[1])
+        elif args[0] == 'SUBSET_A':
+            prover.subset_a = tuple(int(i) for i in args[1:])
     elif directive == 'WAITING' and authcomplete:
         if transfer_args:
             command = encrypt('TRANSFER_REQUEST %s %s FROM %s\n' % transfer_args)
@@ -98,11 +97,11 @@ def parse_arguments():
     parser.add_argument('--serverport', help='server port', type=int, default=Settings.server_port)
     parser.add_argument('--manual', help='run client in manual mode', action='store_true')
     parser.add_argument('--plaintext', help='do not encrypt lines before sending', action='store_true')
+    parser.add_argument('--ident', help='ident to use', default=Settings.ident)
+    parser.add_argument('--identsdb', help='sqlite3 database for ident lookup', default=Settings.identsdbfile)
     parser.add_argument('--transfer', nargs=3, metavar=('TO_IDENT', 'AMOUNT', 'FROM_IDENT'),
                         help='transfer points between accounts after authenticating')
     args = parser.parse_args()
-    if args.serverport:
-        Settings.server_port = args.serverport
     if args.plaintext:
         Settings.encrypt = False
     if args.manual:
@@ -110,6 +109,10 @@ def parse_arguments():
     if args.transfer:
         global transfer_args
         transfer_args = tuple(args.transfer)
+    Settings.server_port = args.serverport
+    Settings.ident = args.ident.upper()
+    Settings.identsdbfile = args.identsdb
+
 
 if __name__ == '__main__':
     parse_arguments()
