@@ -46,7 +46,6 @@ def updatecookie(conn, ident, cookie):
     conn.commit()
 
 def getpassword(conn, ident):
-    print conn, ident
     return getrow(conn, ident)[1]
 
 def getcookie(conn, ident):
