@@ -33,7 +33,17 @@ def inttohex(x):
 def getrow(conn, ident):
     cursor = conn.cursor()
     cursor.execute('select * from players where ident=?',(ident,))
-    return cursor.fetchone()
+    r = cursor.fetchone()
+    if not r:
+        return None
+    ret = dict()
+    ret['ident'] = r[0]
+    ret['name'] = r[1]
+    ret['team'] = r[2]
+    ret['pass'] = r[3]
+    ret['hash'] = r[4]
+    ret['cookie'] = r[5]
+    return ret
 
 def updatepassword(conn, ident, password):
     cursor = conn.cursor()
@@ -46,7 +56,7 @@ def updatecookie(conn, ident, cookie):
     conn.commit()
 
 def getpassword(conn, ident):
-    return getrow(conn, ident)[1]
+    return getrow(conn, ident)['pass']
 
 def getcookie(conn, ident):
-    return getrow(conn, ident)[2]
+    return getrow(conn, ident)['cookie']
