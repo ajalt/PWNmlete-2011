@@ -2,6 +2,7 @@ import socket
 import contextlib
 import argparse
 import sqlite3
+import random
 
 import diffie_hellman
 import karn
@@ -13,19 +14,20 @@ mysession = diffie_hellman.Session()
 prover = fiat_shamir.Prover()
 mycipher = None
 authcomplete = False
+passwordchanged = False
 dbconn = None
 transfer_args = ()
 
 
 class Settings:
     monitor = 'localhost'
-    monitor_port = 8160
+    monitor_port = 8150
     server = 'localhost'
-    server_port = 9991
-    ident = 'testing1'
+    server_port = 9999
+    ident = 'TESTING1'
     encrypt = True
     mode = 'normal'
-    identsdbfile = 'idents.db'
+    identsdbfile = 'testidents.db'
     
     
 def encrypt(command):
@@ -37,6 +39,7 @@ def process_monitor_directive(line):
     global cookie
     global mycipher
     global authcomplete
+    global passwordchanged
     global transfer_args
     
     directive, args = [i.strip() for i in line.split(':', 1)]
@@ -55,7 +58,11 @@ def process_monitor_directive(line):
             else:
                 return 'IDENT %s\n' % Settings.ident
         elif args == 'PASSWORD':
-            return encrypt('PASSWORD %s\n' % util.getpassword(dbconn, Settings.ident))
+            password = util.getpassword(dbconn, Settings.ident)
+            if not password:
+                password = util.genpassword()
+                util.updatepassword(dbconn, Settings.ident, password)
+            return encrypt('PASSWORD %s\n' % password)
         elif args == 'HOST_PORT':
             return encrypt('HOST_PORT %s %s\n' % (Settings.server, Settings.server_port))
         elif args == 'ALIVE':
@@ -70,7 +77,7 @@ def process_monitor_directive(line):
         elif args == 'SUBSET_K':
             return encrypt('SUBSET_K %s\n' % ' '.join(str(s) for s in prover.subset_k_iter()))
     elif directive == 'RESULT':
-        if args == 'ALIVE Identity has been verified.':
+        if args == 'ALIVE Identity has been verified.' or args == 'HOST_PORT LOCALHOST %s' % Settings.server_port:
             authcomplete = True
             return
         args = args.split()
@@ -85,6 +92,12 @@ def process_monitor_directive(line):
         elif args[0] == 'SUBSET_A':
             prover.subset_a = tuple(int(i) for i in args[1:])
     elif directive == 'WAITING' and authcomplete:
+        if not passwordchanged:
+            oldpass = util.getpassword(dbconn, Settings.ident)
+            newpass = util.genpassword()
+            util.updatepassword(dbconn, Settings.ident, newpass)
+            passwordchanged = True
+            return encrypt('CHANGE_PASSWORD %s %s\n' % (oldpass, newpass))
         if transfer_args:
             command = encrypt('TRANSFER_REQUEST %s %s FROM %s\n' % transfer_args)
             transfer_args = ()
@@ -122,6 +135,8 @@ if __name__ == '__main__':
     # connect to sqlite3 db
     dbconn = sqlite3.connect(Settings.identsdbfile)
     dbconn.text_factory = str
+
+    random.seed()
 
     # Connect to server and open stream
     with contextlib.closing(socket.create_connection((Settings.monitor, Settings.monitor_port))) as sock:
