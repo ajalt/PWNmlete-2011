@@ -20,7 +20,7 @@ class DecryptionError(KarnError):
 class Cipher(object):
     def __init__(self, key):
         self.key = key
-        keybytes = bytearray.fromhex(util.inttohex(key))
+        keybytes = bytearray.fromhex(unicode(util.inttohex(key)))
 
         # the monitor uses Java's BigInteger, which uses 2s complement.
         # that means that it will add on a 0 byte in front to preserve the
@@ -40,17 +40,17 @@ class Cipher(object):
             raise KarnError('"%s" is not encrypted!' % cipher_line)
             
         # convert from base 32 to bytes literal
-        cipherbytes = bytearray.fromhex(util.inttohex(int(cipher_line.strip(), 32)))
+        cipherbytes = bytearray.fromhex(unicode(util.inttohex(int(cipher_line.strip(), 32))))
 
         output = bytearray()
         # start at byte 1 because byte 0 is the guard byte
         for i in xrange(1, len(cipherbytes), BLOCK_SIZE):
             cipher = cipherbytes[i:i+BLOCK_SIZE]
             
-            leftmd = bytearray(hashlib.sha1(util.right(cipher) + self.rightkey).digest())
+            leftmd = bytearray(hashlib.sha1(str(util.right(cipher)) + str(self.rightkey)).digest())
             leftcipher = util.left(cipher)
             plaintext = bytearray(leftmd[i] ^ leftcipher[i] for i in xrange(len(leftmd)))
-            rightmd = bytearray(hashlib.sha1(plaintext + self.leftkey).digest())
+            rightmd = bytearray(hashlib.sha1(str(plaintext) + str(self.leftkey)).digest())
             rightcipher = util.right(cipher)
             plaintext.extend(bytearray(rightmd[i] ^ rightcipher[i] for i in xrange(len(rightmd))))
 
@@ -81,9 +81,9 @@ class Cipher(object):
             leftblock = util.left(block)
             rightblock = util.right(block)
 
-            leftmd = bytearray(hashlib.sha1(leftblock + self.leftkey).digest())
+            leftmd = bytearray(hashlib.sha1(str(leftblock) + str(self.leftkey)).digest())
             rightcipher = bytearray(leftmd[i] ^ rightblock[i] for i in xrange(len(leftmd)))
-            rightmd = bytearray(hashlib.sha1(rightcipher + self.rightkey).digest())
+            rightmd = bytearray(hashlib.sha1(str(rightcipher) + str(self.rightkey)).digest())
             leftcipher = bytearray(rightmd[i] ^ leftblock[i] for i in xrange(len(rightmd)))
 
             output.extend(leftcipher)
