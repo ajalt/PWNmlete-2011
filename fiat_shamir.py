@@ -53,7 +53,7 @@ class Prover(object):
     q = 55658916385526039923
     n = p * q
     def __init__(self):
-        self.s = random.randrange(2 << 98, 2 << 99)
+        self.s = random.randrange(2 << 64)
         self.v = pow(self.s, 2, self.n)
         
         self.rounds = 0
@@ -62,7 +62,7 @@ class Prover(object):
         self._r_set = ()
         
     def authorize_iter(self):
-        self._r_set = tuple(random.randrange(2 << 128) for _ in xrange(self.rounds))
+        self._r_set = tuple(random.randrange(2 << 64) for _ in xrange(self.rounds))
         for r in self._r_set:
             print r, pow(r, 2, self.n)
             yield pow(r, 2, self.n)
