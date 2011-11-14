@@ -44,10 +44,15 @@ def find_prime(lower_bound, upper_bound):
     raise FiatShamirError('Could not find a prime number.')
 
 class Prover(object):
+    ##use static 128-bit prime keys
+    #p = 684223312678793544935145963235999473023
+    #q = 1120468056834988839380190802935820614931
+    #just kidding, I think keys that big were causing decryption errors
+    #use 64-but keys instead
+    p = 70184992425131707181
+    q = 55658916385526039923
+    n = p * q
     def __init__(self):
-        self.p = find_prime(2 << 100, 2 << 101)
-        self.q = find_prime(2 << 100, 2 << 101)
-        self.n = self.p * self.q
         self.s = random.randrange(2 << 98, 2 << 99)
         self.v = pow(self.s, 2, self.n)
         
@@ -57,7 +62,7 @@ class Prover(object):
         self._r_set = ()
         
     def authorize_iter(self):
-        self._r_set = tuple(random.randrange(2 << 50, 2 << 100) for _ in xrange(self.rounds))
+        self._r_set = tuple(random.randrange(2 << 128) for _ in xrange(self.rounds))
         for r in self._r_set:
             print r, pow(r, 2, self.n)
             yield pow(r, 2, self.n)
@@ -80,7 +85,7 @@ class Verifier(object):
         self.subset_j = ()
         self.subset_k = ()
         
-        self.subset_a = random.sample(xrange(rounds), rounds // 2)
+        self.subset_a = sorted(random.sample(xrange(rounds), rounds // 2))
         
     def is_valid(self):
         if not self.authorize_set:
@@ -89,6 +94,10 @@ class Verifier(object):
             raise FiatShamirError('subset_j cannot be empty when is_valid is called')
         if not self.subset_k:
             raise FiatShamirError('subset_k cannot be empty when is_valid is called')
+            
+        #ensure the public key is ours
+        if self.n != Prover.n:
+            return False
             
         j = iter(self.subset_j)
         k = iter(self.subset_k)
@@ -99,3 +108,4 @@ class Verifier(object):
             elif pow(next(j), 2, self.n) != self.authorize_set[i]:
                     return False
         return True
+    

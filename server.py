@@ -14,14 +14,13 @@ dbconn = None
 
 class Settings:
     host = 'localhost'
-    port = 9999
-    ident = 'TESTING1'
+    port = 9992
+    ident = 'TESTING22'
     mode = 'normal'
     encrypt = True
     debug = False
     identsdbfile = 'testidents.db'
-    ident_whitelist = ('TESTING1', 'TESTING2', 'TESTING3')
-    proof_rounds = 3
+    proof_rounds = 20
     silent = False
     privatekey = None
     enforcechecksums = False
@@ -82,6 +81,9 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
     
     def check_checksum(self,checksum):
         password = util.getpassword(self.dbconn, Settings.ident)
+        if not password:
+            print '***No password in database'
+            return True
         check = hashlib.sha1(password.upper()).hexdigest()
         if check != checksum:
             chkprint('***Checksum does not match:')
@@ -120,7 +122,7 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
             elif directive == 'REQUIRE':
                 if args == 'IDENT':
                     if Settings.encrypt:
-                        self.send_command('IDENT %s %s\n' % (Settings.ident, util.baseN(self.session.public_key, 32)))
+                        self.send_command('IDENT %s %s\n' % (Settings.ident, util.base32(self.session.public_key)))
                     else:
                         self.send_command('IDENT %s\n' % Settings.ident)
                 elif args == 'QUIT':
@@ -138,8 +140,8 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
                     self.send_command(self.cipher.encrypt(command) if self.cipher else command)
                 elif args == 'TRANSFER_RESPONSE':
                     #use a whitelist instead of spending time on calculations
-                    accept_transfer = self.transfer_request['recipient'] in Settings.ident_whitelist
-                    #accept_transfer = self.verifier.is_valid()
+                    #accept_transfer = self.transfer_request['recipient'] in Settings.ident_whitelist
+                    accept_transfer = self.verifier.is_valid()
                     chkprint(self.verifier.is_valid())
                     command = 'TRANSFER_RESPONSE %s' % ('ACCEPT' if accept_transfer else 'DECLINE')
                     self.send_command(self.cipher.encrypt(command) if self.cipher else command)

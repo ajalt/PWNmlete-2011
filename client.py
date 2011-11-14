@@ -21,17 +21,17 @@ transfer_args = ()
 
 class Settings:
     monitor = 'localhost'
-    monitor_port = 8150
+    monitor_port = 8160
     server = 'localhost'
-    server_port = 9999
-    ident = 'TESTING1'
+    server_port = 9992
+    ident = 'TESTING22'
     encrypt = True
     mode = 'normal'
     identsdbfile = 'testidents.db'
     
     
 def encrypt(command):
-    '''Encrypts a command if necessary.'''
+    """Encrypts a command if necessary."""
     return mycipher.encrypt(command) if mycipher else command
 
 def process_monitor_directive(line):
@@ -54,7 +54,7 @@ def process_monitor_directive(line):
     elif directive == 'REQUIRE':
         if args == 'IDENT':
             if Settings.encrypt:
-                return 'IDENT %s %s\n' % (Settings.ident, util.baseN(mysession.public_key, 32))
+                return 'IDENT %s %s\n' % (Settings.ident, util.base32(mysession.public_key))
             else:
                 return 'IDENT %s\n' % Settings.ident
         elif args == 'PASSWORD':
@@ -68,7 +68,6 @@ def process_monitor_directive(line):
         elif args == 'ALIVE':
             return encrypt('ALIVE %s\n' % util.getcookie(dbconn, Settings.ident))
         elif args == 'PUBLIC_KEY':
-            #should these be transmitted in base32?
             return encrypt('PUBLIC_KEY %d %d\n' % (prover.v, prover.n))
         elif args == 'AUTHORIZE_SET':
             return encrypt('AUTHORIZE_SET %s\n' %  ' '.join(str(s) for s in prover.authorize_iter()))
@@ -135,8 +134,6 @@ if __name__ == '__main__':
     # connect to sqlite3 db
     dbconn = sqlite3.connect(Settings.identsdbfile)
     dbconn.text_factory = str
-
-    random.seed()
 
     # Connect to server and open stream
     with contextlib.closing(socket.create_connection((Settings.monitor, Settings.monitor_port))) as sock:

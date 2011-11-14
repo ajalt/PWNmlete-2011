@@ -89,4 +89,4 @@ class Cipher(object):
             output.extend(leftcipher)
             output.extend(rightcipher) 
 
-        return util.baseN(int(util.bytestohex(output), 16), 32) + '\n'
+        return util.base32(int(util.bytestohex(output), 16)) + '\n'
