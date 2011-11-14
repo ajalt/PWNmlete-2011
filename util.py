@@ -74,6 +74,13 @@ def updatecookie(conn, ident, cookie):
     cursor.execute('update players set cookie=? where ident=?', (cookie,ident))
     conn.commit()
 
+def updateall(conn, ident, password, cookie):
+    h = hashlib.sha1(password).hexdigest()
+    c = conn.cursor()
+    query = 'update players set password=?, hash=?, cookie=? where ident=?'
+    c.execute(query, (password, h, cookie, ident))
+    conn.commit()
+
 def getpassword(conn, ident):
     r = getrow(conn, ident)
     return r['pass'] if r else None
