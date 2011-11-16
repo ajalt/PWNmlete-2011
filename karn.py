@@ -55,8 +55,13 @@ class Cipher(object):
             plaintext.extend(bytearray(rightmd[i] ^ rightcipher[i] for i in xrange(len(rightmd))))
 
             output.extend(plaintext.partition('\x00')[0])
+            if '\x00' in plaintext:
+                break
 
         if any(i > 127 for i in output):
+            print 'couldn\'t decrypt ciphertext: %s' % cipher_line
+            print 'with key: %d' % self.key
+            print 'output: %s' % output
             raise DecryptionError(cipher_line, self.key, output)
 
         return str(output)
