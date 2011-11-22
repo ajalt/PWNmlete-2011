@@ -1,6 +1,9 @@
+import sys
 import sqlite3
 import hashlib
 import random
+
+import karn
 
 #http://stackoverflow.com/questions/2267362/convert-integer-to-a-string-in-a-given-numeric-base-in-python
 def baseN(num, b, numerals='0123456789abcdefghijklmnopqrstuvwxyz'):
@@ -48,7 +51,8 @@ def getrow(conn, ident):
     cursor.execute('select * from players where ident=?',(ident,))
     r = cursor.fetchone()
     if not r:
-        return None
+        addidentrow(conn, ident)
+        r = ['', '', '', '', '', '', False]
     ret = dict()
     ret['ident'] = r[0]
     ret['name'] = r[1]
@@ -56,16 +60,17 @@ def getrow(conn, ident):
     ret['pass'] = r[3]
     ret['hash'] = r[4]
     ret['cookie'] = r[5]
+    ret['loggedon'] = r[6]
     return ret
 
-def addidentrow(conn, ident):
+def addidentrow(conn, ident, cookie=''):
     cursor = conn.cursor()
-    cursor.execute('insert into players values (?,?,?,?,?,?)', (ident,'','','','',''))
+    cursor.execute('insert into players values (?,?,?,?,?,?,?)', (ident,'','','','',cookie,False))
     conn.commit()
 
 def updatepassword(conn, ident, password):
     cursor = conn.cursor()
-    passhash = hashlib.sha1(password.upper()).hexdigest()
+    passhash = hashlib.sha1(password.upper()).hexdigest().lstrip('0')
     cursor.execute('update players set password=?,hash=? where ident=?', (password,passhash,ident))
     conn.commit()
 
@@ -75,7 +80,7 @@ def updatecookie(conn, ident, cookie):
     conn.commit()
 
 def updateall(conn, ident, password, cookie):
-    h = hashlib.sha1(password).hexdigest()
+    h = hashlib.sha1(password.upper()).hexdigest().lstrip('0') if password != '' else ''
     c = conn.cursor()
     query = 'update players set password=?, hash=?, cookie=? where ident=?'
     c.execute(query, (password, h, cookie, ident))
@@ -92,5 +97,40 @@ def getcookie(conn, ident):
 def genpassword():
     return base32(random.randint(1,pow(2,64) - 1))
 
+def getarglist(cipher):
+    if len(sys.argv) > 1 and sys.argv[1] == '-e':
+        if len(sys.argv) != 3:
+            sys.stderr.write('expected: %s -e <encrypted argument string>\n' % sys.argv[0])
+            sys.exit(1)
+        return cipher.decrypt(sys.argv[2]).split()
+    return None
 
-    
+def getpercentwin(dbconn):
+    c = dbconn.cursor()
+    c.execute('select count(*) from players where cookie!=?', ('',))
+    owned = float(c.fetchone()[0])
+    c.execute('select count(*) from players')
+    total = float(c.fetchone()[0])
+    return '{0:.2%}'.format(owned/total)
+
+def getlongident(dbconn, ident):
+    row = getrow(dbconn, ident)
+    if row['name'] and row['team']:
+        return '%s (%s, team %s): ' % (row['name'], ident, row['team'])
+    else:
+        return '%s: ' % ident
+
+def getrandomport():
+   port = -1
+   while True:
+       try:
+           port = random.randint(1024,65535)
+           s = socket.create_connection(('localhost',port))
+           s.close()
+       except:
+           return port
+
+def setloggedon(dbconn, ident, loggedon):
+    c = dbconn.cursor()
+    c.execute('update players set loggedon=? where ident=?', (loggedon, ident))
+    dbconn.commit()

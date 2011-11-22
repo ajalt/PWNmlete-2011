@@ -64,7 +64,6 @@ class Prover(object):
     def authorize_iter(self):
         self._r_set = tuple(random.randrange(2 << 64) for _ in xrange(self.rounds))
         for r in self._r_set:
-            print r, pow(r, 2, self.n)
             yield pow(r, 2, self.n)
             
     def subset_k_iter(self):
