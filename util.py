@@ -116,9 +116,9 @@ def getpercentwin(dbconn):
 def getlongident(dbconn, ident):
     row = getrow(dbconn, ident)
     if row['name'] and row['team']:
-        return '%s (%s, team %s): ' % (row['name'], ident, row['team'])
+        return '%s (%s, team %s)' % (row['name'], ident, row['team'])
     else:
-        return '%s: ' % ident
+        return ident
 
 def getrandomport():
    port = -1
@@ -134,3 +134,7 @@ def setloggedon(dbconn, ident, loggedon):
     c = dbconn.cursor()
     c.execute('update players set loggedon=? where ident=?', (loggedon, ident))
     dbconn.commit()
+
+def printacctline(longident):
+    print '%s '.ljust(75,'.'),
+
