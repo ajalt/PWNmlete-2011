@@ -8,6 +8,9 @@ BLOCK_SIZE = 40
 GUARD_BYTE = 42
 NULL_BYTE = 0
 
+########################################################################################
+# THIS FILE CONTAINS OUR IMPLEMENTATION OF KARN ENCRYPTION, A SYMMETRIC KEY CRYPTOSYSM #
+########################################################################################
 class KarnError(Exception): pass
 
 class DecryptionError(KarnError):
@@ -17,9 +20,12 @@ class DecryptionError(KarnError):
         self.key = key
         self.decrypted = decrypted
 
+# Cipher is a class that is instantiated with an integer key from the monitor.
+# the key is converted by the constructor to a bytearray identical to the monitor's key
 class Cipher(object):
     def __init__(self, key):
         self.key = key
+        # need to convert integer to hex str before getting the byte array
         keybytes = bytearray.fromhex(unicode(util.inttohex(key)))
 
         # the monitor uses Java's BigInteger, which uses 2s complement.
@@ -47,6 +53,8 @@ class Cipher(object):
         for i in xrange(1, len(cipherbytes), BLOCK_SIZE):
             cipher = cipherbytes[i:i+BLOCK_SIZE]
             
+            # + is the concatenation operator in python
+            # ^ is the xor operator
             leftmd = bytearray(hashlib.sha1(str(util.right(cipher)) + str(self.rightkey)).digest())
             leftcipher = util.left(cipher)
             plaintext = bytearray(leftmd[i] ^ leftcipher[i] for i in xrange(len(leftmd)))
@@ -54,10 +62,13 @@ class Cipher(object):
             rightcipher = util.right(cipher)
             plaintext.extend(bytearray(rightmd[i] ^ rightcipher[i] for i in xrange(len(rightmd))))
 
+            # break if we decrypted a null byte
             output.extend(plaintext.partition('\x00')[0])
             if '\x00' in plaintext:
                 break
 
+        # we are expecting an ascii string, so print debug info 
+        # if any decrypted character is out of ascii range
         if any(i > 127 for i in output):
             print 'couldn\'t decrypt ciphertext: %s' % cipher_line
             print 'with key: %d' % self.key
@@ -66,7 +77,7 @@ class Cipher(object):
 
         return str(output)
 
-
+    # msg is an encrypted message to be decrypted
     def encrypt(self, msg):
         msglen = len(msg)
         msgbytes = bytearray(msglen + 1 + BLOCK_SIZE - ((msglen + 1) % BLOCK_SIZE))

@@ -1,5 +1,9 @@
 import random
 
+######################################################################################
+# THIS FILE CONTAINS OUR IMPLEMENTATION OF FIAT-SHAMIR ZERO KNOWLEDGE AUTHENTICATION #
+######################################################################################
+
 class FiatShamirError(Exception): pass
 
 def is_prime(n, k=50):
@@ -43,8 +47,11 @@ def find_prime(lower_bound, upper_bound):
             return n
     raise FiatShamirError('Could not find a prime number.')
 
+# created by the client to generate a public key,
+# authorize set and subset j and k.
 class Prover(object):
     ##use static 128-bit prime keys
+    # generated with find_prime
     #p = 684223312678793544935145963235999473023
     #q = 1120468056834988839380190802935820614931
     #just kidding, I think keys that big were causing decryption errors
@@ -74,6 +81,7 @@ class Prover(object):
         for i in set(xrange(self.rounds)) - set(self.subset_a):
             yield self._r_set[i] % self.n
             
+# Created by the sender to check the validity of the authorize set, and subsets j and k
 class Verifier(object):
     def __init__(self, rounds, v=0, n=0):
         self.rounds = rounds
