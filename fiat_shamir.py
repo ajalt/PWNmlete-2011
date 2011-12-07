@@ -1,4 +1,5 @@
 import random
+import hashlib
 
 ######################################################################################
 # THIS FILE CONTAINS OUR IMPLEMENTATION OF FIAT-SHAMIR ZERO KNOWLEDGE AUTHENTICATION #
@@ -50,12 +51,7 @@ def find_prime(lower_bound, upper_bound):
 # created by the client to generate a public key,
 # authorize set and subset j and k.
 class Prover(object):
-    ##use static 128-bit prime keys
-    # generated with find_prime
-    #p = 684223312678793544935145963235999473023
-    #q = 1120468056834988839380190802935820614931
-    #just kidding, I think keys that big were causing decryption errors
-    #use 64-but keys instead
+    #use static 64-bit prime keys generated with find_prime
     p = 70184992425131707181
     q = 55658916385526039923
     n = p * q
@@ -83,6 +79,10 @@ class Prover(object):
             
 # Created by the sender to check the validity of the authorize set, and subsets j and k
 class Verifier(object):
+    e = 65537
+    #set Verifier.monitor_key to the integer representation of the result of a GET_MONITOR_KEY command
+    monitor_key = None 
+    
     def __init__(self, rounds, v=0, n=0):
         self.rounds = rounds
         self.v = v
@@ -94,7 +94,19 @@ class Verifier(object):
         
         self.subset_a = sorted(random.sample(xrange(rounds), rounds // 2))
         
-    def is_valid(self):
+    def verify_public_key(self, certificate):
+        if monitor_key is None:
+            raise FiatShamirError('cannot validate certificate until monitor ket is set')
+            
+        cert_hash = pow(certificate, Verifier.e, monitor_key)
+        v_bytes = bytearray.fromhex(unicode(util.inttohex(self.v)))
+        n_bytes = bytearray.fromhex(unicode(util.inttohex(self.n)))
+        return hashlib.sha1(str(v_bytes) + str(n_bytes)) == cert_hash
+        
+    def is_valid(self, certificate=None):
+        #Validates the prover's respose. If the prover's certificate is provided (as an int),
+        #  then the certificate is used to verify the prover's public key.
+        #  Otherwise the public key is only accepted if it is the static key used by our accounts.
         if not self.authorize_set:
             raise FiatShamirError('authorize_set cannot be empty when is_valid is called')
         if not self.subset_j:
@@ -102,8 +114,12 @@ class Verifier(object):
         if not self.subset_k:
             raise FiatShamirError('subset_k cannot be empty when is_valid is called')
             
-        #ensure the public key is ours
-        if self.n != Prover.n:
+        if certificate is not None:
+            #ensure the public key is legitimate
+            if not validate_public_key(certificate):
+                return False
+        elif self.n != Prover.n:
+            #otherwise ensure the public key is ours
             return False
             
         j = iter(self.subset_j)
